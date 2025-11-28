@@ -5,7 +5,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
     RegisterView, CategoryViewSet, TransactionViewSet, 
-    DashboardSummaryView, PortfolioViewSet, MarketDataView, UserProfileView
+    DashboardSummaryView, PortfolioViewSet, MarketDataView, UserProfileView,
+    BuyAssetView, SellAssetView # <-- Bunları ekleyin
 )
 
 # Router
@@ -30,5 +31,11 @@ urlpatterns = [
     path('api/user-profile/', UserProfileView.as_view(), name='user_profile'),
 
     # Router (Categories, Transactions, Portfolio)
+    path('api/', include(router.urls)),
+
+    # 11. Hafta - Al/Sat İşlemleri
+    path('api/trade/buy/', BuyAssetView.as_view(), name='trade_buy'),
+    path('api/trade/sell/', SellAssetView.as_view(), name='trade_sell'),
+
     path('api/', include(router.urls)),
 ]

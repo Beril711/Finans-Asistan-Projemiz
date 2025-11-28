@@ -55,3 +55,20 @@ class AssetHoldingSerializer(serializers.ModelSerializer):
         model = AssetHolding
         fields = ('id', 'symbol', 'asset_type', 'quantity', 'average_cost')
         read_only_fields = ('user',)
+
+
+# 11. HAFTA: ALIM/SATIM İŞLEM SERİLEŞTİRİCİSİ
+class TradeSerializer(serializers.Serializer):
+    symbol = serializers.CharField(max_length=20) # Örn: bitcoin
+    quantity = serializers.DecimalField(max_digits=18, decimal_places=8) # Kaç adet?
+    price = serializers.DecimalField(max_digits=18, decimal_places=8) # O anki fiyatı ($)
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Miktar pozitif olmalıdır.")
+        return value
+    
+    def validate_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Fiyat pozitif olmalıdır.")
+        return value
