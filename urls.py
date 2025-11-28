@@ -1,42 +1,34 @@
-# Backend/finans_api/urls.py
-
-# GEREKLİ İMPORTLAR
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
-from django.urls import path, include # <-- 'include' buraya eklendi
 from django.contrib import admin
-from rest_framework.routers import DefaultRouter # <-- DefaultRouter eklendi
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-# VIEW İMPORTLARI
-from .views import RegisterView
-from .views import CategoryViewSet, TransactionViewSet # <-- Category ve Transaction View'ları geri getirildi
+from .views import (
+    RegisterView, CategoryViewSet, TransactionViewSet, 
+    DashboardSummaryView, PortfolioViewSet, MarketDataView, UserProfileView
+)
 
-# VIEW İMPORTLARI (Mevcut satırı güncelleyin)
-from .views import RegisterView, CategoryViewSet, TransactionViewSet, DashboardSummaryView
-
-# 1. API için router oluştur
-router = DefaultRouter() # <-- Router tanımlandı
+# Router
+router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'transactions', TransactionViewSet, basename='transaction')
+router.register(r'portfolio', PortfolioViewSet, basename='portfolio') # 9. Hafta
 
-
-# 2. URL listesi
 urlpatterns = [
-    # Django Yönetim Paneli
     path('admin/', admin.site.urls),
     
-    # 6. Hafta - Kullanıcı Kayıt API'si
+    # Auth
     path('api/register/', RegisterView.as_view(), name='register'),
-    
-    # SimpleJWT Kimlik Doğrulama endpoint'leri
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    # 7. Hafta - Router URL'lerini dahil et
-    path('api/', include(router.urls)), # <-- Bu satır artık Category ve Transaction View'larını aktif edecek
-
-    # 8. Hafta - Dashboard ve Grafik Verileri
+    # 8. Hafta Dashboard
     path('api/dashboard-summary/', DashboardSummaryView.as_view(), name='dashboard_summary'),
+
+    # 9. Hafta Yatırım
+    path('api/market-data/', MarketDataView.as_view(), name='market_data'),
+    path('api/user-profile/', UserProfileView.as_view(), name='user_profile'),
+
+    # Router (Categories, Transactions, Portfolio)
+    path('api/', include(router.urls)),
 ]
