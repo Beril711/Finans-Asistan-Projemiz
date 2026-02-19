@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # 1. Servis: PostgreSQL Veritabanı
+  db:
+    image: postgres:15-alpine  # Hafif bir PostgreSQL imajı
+    container_name: finans_asistanim_db
+    # Verileri bilgisayarda kalıcı saklamak için volume tanımı
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    # Veritabanı ayarları
+    environment:
+      - POSTGRES_DB=finans_asistanim
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=superguclusifre123
+    # Bilgisayar portu 5433, container portu 5432
+    ports:
+      - "5433:5432" 
+  
+  # 2. Servis: Django Backend
+  backend:
+    container_name: finans_asistanim_backend
+    # Django projesini ./backend klasöründeki Dockerfile'a göre inşa et
+    build: ./backend  
+    # Çalıştırılacak komut (Django sunucusunu başlatır)
+    command: python manage.py runserver 0.0.0.0:8000 
+    # Kod değişikliklerini container'a yansıt
+    volumes:
+      - ./backend:/app 
+    # Bilgisayar portu 8000, container portu 8000
+    ports:
+      - "8000:8000" 
+    # Django'ya aktarılan çevre değişkenleri
+    environment:
+      # Veritabanı bağlantı URL'i (host olarak db servisini kullanır)
+      - DATABASE_URL=postgres://admin:superguclusifre123@db:5432/finans_asistanim
+      - SECRET_KEY=django-insecure-cok-gizli-proje-keyiniz
+      - DEBUG=1
+    # Bu servis, db servisi tamamen başladıktan sonra başlasın
+    depends_on:
+      - db 
+
+volumes:
+  # PostgreSQL kalıcı veri depolama alanı
+  postgres_data:
