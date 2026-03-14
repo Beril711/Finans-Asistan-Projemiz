@@ -1,99 +1,98 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
+import React from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-export default function App() {
+import { useAuth } from '@/contexts/AuthContext';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+
+export default function HomeScreen() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { logout } = useAuth();
 
-  // DİKKAT: Buraya 'ipconfig' ile bulduğun KENDİ IP ADRESİNİ yaz!
-  // Örnek: 'http://192.168.1.35:8000/api/token/'
-  const API_URL = 'http://10.45.161.148:8000/api/token/';
-
-  const handleLogin = async () => {
-    // Basit validasyon
-    if (!username || !password) {
-      Alert.alert("Hata", "Lütfen kullanıcı adı ve şifre girin.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      console.log("İstek atılıyor:", API_URL); // Hata ayıklama için
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert("Başarılı 🎉", "Giriş yapıldı! Token: " + data.access.substring(0, 10) + "...");
-        // Başarılı girişten sonra Dashboard'a git
-        setTimeout(() => {
-          router.replace('/dashboard');
-        }, 1000);
-        // İleride burada ana sayfaya yönlendirme yapacağız.
-      } else {
-        Alert.alert("Giriş Başarısız", "Kullanıcı adı veya şifre hatalı.");
-      }
-    } catch (error) {
-      Alert.alert("Bağlantı Hatası", "Sunucuya ulaşılamadı. Lütfen IP adresini ve Django sunucusunun çalıştığını kontrol et.");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  const handleLogout = () => {
+    Alert.alert('Cikis', 'Cikis yapmak istediginize emin misiniz?', [
+      { text: 'Vazgec', style: 'cancel' },
+      { text: 'Cikis Yap', style: 'destructive', onPress: () => logout() },
+    ]);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.content}>
-        <Text style={styles.title}>Finans Asistanım 📱</Text>
-        <Text style={styles.subtitle}>Hoş Geldiniz</Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Kullanıcı Adı</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Kullanıcı adınız"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Finans Asistani</Text>
+          <Text style={styles.subtitle}>Finanslarinizi kolayca yonetin</Text>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Şifre</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="******"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+        {/* Module Cards */}
+        <View style={styles.cardsSection}>
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/(tabs)/tracking')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#e0e7ff' }]}>
+              <MaterialIcons name="account-balance-wallet" size={32} color="#667eea" />
+            </View>
+            <Text style={styles.cardTitle}>Harcama Takibi</Text>
+            <Text style={styles.cardDesc}>Gelir ve giderlerinizi takip edin, kategorilere ayirin</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/(tabs)/investing')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#fce7f3' }]}>
+              <MaterialIcons name="show-chart" size={32} color="#ec4899" />
+            </View>
+            <Text style={styles.cardTitle}>Yatirim Simulatoru</Text>
+            <Text style={styles.cardDesc}>Sanal para ile yatirim yapin, piyasalari takip edin</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/(tabs)/scanner')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#d1fae5' }]}>
+              <MaterialIcons name="camera-alt" size={32} color="#10b981" />
+            </View>
+            <Text style={styles.cardTitle}>Fis Tarayici</Text>
+            <Text style={styles.cardDesc}>Fislerinizi tarayin, harcamalarinizi otomatik kaydedin</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Giriş Yap</Text>
-          )}
+        {/* Features */}
+        <View style={styles.featuresSection}>
+          <View style={styles.featureItem}>
+            <MaterialIcons name="bar-chart" size={24} color="#667eea" />
+            <Text style={styles.featureText}>Detayli Raporlar</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <MaterialIcons name="security" size={24} color="#667eea" />
+            <Text style={styles.featureText}>Guvenli Giris</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <MaterialIcons name="speed" size={24} color="#667eea" />
+            <Text style={styles.featureText}>Hizli Islem</Text>
+          </View>
+        </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <MaterialIcons name="logout" size={20} color="#ef4444" />
+          <Text style={styles.logoutText}>Cikis Yap</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -101,70 +100,90 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#667eea',
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
+    paddingTop: 40,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#2d3748',
-    textAlign: 'center',
-    marginBottom: 10,
+    color: '#fff',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#718096',
-    textAlign: 'center',
-    marginBottom: 40,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.8)',
   },
-  inputContainer: {
-    marginBottom: 20,
+  cardsSection: {
+    gap: 16,
+    marginBottom: 28,
   },
-  label: {
-    fontSize: 14,
-    color: '#4a5568',
-    marginBottom: 8,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  input: {
+  moduleCard: {
     backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    fontSize: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  button: {
-    backgroundColor: '#4299e1', // Vue projesindeki mavi ton
-    padding: 18,
-    borderRadius: 12,
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
-    shadowColor: "#4299e1",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    marginBottom: 12,
   },
-  buttonText: {
-    color: '#fff',
+  cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
+  },
+  featuresSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  featureItem: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  featureText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ef4444',
   },
 });

@@ -8,11 +8,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from decimal import Decimal
+import random
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-from PIL import Image
-import pytesseract
+try:
+    from PIL import Image
+    import pytesseract
+except ImportError:
+    pytesseract = None
 import re
 
 
@@ -85,6 +89,18 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
+    def deposit(self, request):
+        """Portföye bakiye yükle"""
+        amount = request.data.get('amount')
+        if not amount or float(amount) <= 0:
+            return Response({'error': 'Geçerli bir miktar girin.'}, status=status.HTTP_400_BAD_REQUEST)
+        portfolio, _ = Portfolio.objects.get_or_create(user=request.user)
+        portfolio.balance += Decimal(str(amount))
+        portfolio.save()
+        serializer = self.get_serializer(portfolio)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
     def reset(self, request):
         """Portföyü sıfırla: bakiye varsayılan değere çek, tüm yatırımlar ve holdings temizlenir"""
         # Kullanıcının portföyünü getir/oluştur
@@ -102,10 +118,22 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=200)
 
 class AssetViewSet(viewsets.ReadOnlyModelViewSet):
-    """Yatırım yapılabilecek varlıklar (sadece okuma)"""
+    """Yatırım yapılabilecek varlıklar (sadece okuma) - Fiyatlar her istekte simüle edilir"""
     serializer_class = AssetSerializer
     permission_classes = [IsAuthenticated]
     queryset = Asset.objects.all()
+
+    def list(self, request):
+        """Varlıkları listele ve fiyatları rastgele güncelle (simülasyon)"""
+        assets = Asset.objects.all()
+        for asset in assets:
+            change_percent = random.uniform(-1.5, 2.0) / 100
+            new_price = float(asset.current_price) * (1 + change_percent)
+            asset.current_price = Decimal(str(round(max(new_price, 0.01), 2)))
+            asset.save()
+
+        serializer = self.get_serializer(assets, many=True)
+        return Response(serializer.data)
 
 class InvestmentViewSet(viewsets.ModelViewSet):
     """Alım/Satım işlemleri"""
