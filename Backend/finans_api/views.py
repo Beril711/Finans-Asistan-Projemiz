@@ -127,6 +127,8 @@ class AssetViewSet(viewsets.ReadOnlyModelViewSet):
         """Gerçek fiyatları dış API'lerden çek"""
         import requests
         import yfinance as yf
+        import ssl
+        ssl._create_default_https_context = ssl._create_unverified_context
 
         prices = {}
 
@@ -352,7 +354,7 @@ class OCRScanView(APIView):
 
         content_type = file_obj.content_type or 'image/jpeg'
 
-        client = anthropic.Anthropic(api_key="ANTHROPIC_API_KEY")
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", "").strip())
 
         message = client.messages.create(
             model="claude-opus-4-6",

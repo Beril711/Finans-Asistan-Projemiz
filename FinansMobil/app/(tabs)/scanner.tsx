@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import api from '@/services/api';
 import type { ScanReceiptResponse } from '@/types';
+import { addTransaction, getCategories, addCategory } from '@/services/trackingService';
 
 export default function ScannerScreen() {
   const [image, setImage] = useState<string | null>(null);
@@ -71,6 +72,35 @@ export default function ScannerScreen() {
       });
 
       setResult(response.data);
+
+      // Tutar tespit edildiyse otomatik gider ekle
+      if (response.data.detected_total && response.data.detected_total > 0) {
+        try {
+          // Kategorileri getir, "Diger" kategorisini bul veya oluştur
+          const catResponse = await getCategories();
+          let category = catResponse.data.find(
+            (c) => c.name.toLowerCase() === 'diger' || c.name.toLowerCase() === 'diğer'
+          );
+
+          if (!category) {
+            const newCat = await addCategory({ name: 'Diger', type: 'EXPENSE' });
+            category = newCat.data;
+          }
+
+          // Gider ekle
+          await addTransaction({
+            transaction_type: 'EXPENSE',
+            amount: response.data.detected_total,
+            category: category.id,
+            date: new Date().toISOString().split('T')[0],
+            description: 'Fis tarayici ile eklendi',
+          });
+
+          Alert.alert('Basarili', `${response.data.detected_total} TL gider olarak eklendi!`);
+        } catch (e) {
+          console.log('Gider eklenirken hata:', e);
+        }
+      }
     } catch (error: any) {
       Alert.alert('Hata', 'Fis taranamiyor. Tekrar deneyin.');
     } finally {
