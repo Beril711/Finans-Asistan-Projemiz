@@ -118,19 +118,91 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=200)
 
 class AssetViewSet(viewsets.ReadOnlyModelViewSet):
-    """Yatırım yapılabilecek varlıklar (sadece okuma) - Fiyatlar her istekte simüle edilir"""
+    """Yatırım yapılabilecek varlıklar - Fiyatlar gerçek API'lerden çekilir"""
     serializer_class = AssetSerializer
     permission_classes = [IsAuthenticated]
     queryset = Asset.objects.all()
 
+    def get_real_prices(self):
+        """Gerçek fiyatları dış API'lerden çek"""
+        import requests
+        import yfinance as yf
+
+        prices = {}
+
+        # 1. KRİPTO - CoinGecko (ücretsiz, key gerekmez)
+        try:
+            url = "https://api.coingecko.com/api/v3/simple/price"
+            params = {
+                "ids": "bitcoin,ethereum,binancecoin,ripple,solana",
+                "vs_currencies": "try"
+            }
+            resp = requests.get(url, params=params, timeout=10)
+            data = resp.json()
+            crypto_map = {
+                "bitcoin": "BTC",
+                "ethereum": "ETH",
+                "binancecoin": "BNB",
+                "ripple": "XRP",
+                "solana": "SOL",
+            }
+            for cg_id, symbol in crypto_map.items():
+                if cg_id in data:
+                    prices[symbol] = data[cg_id]["try"]
+        except Exception as e:
+            print(f"CoinGecko hatası: {e}")
+
+        # 2. DÖVİZ - ExchangeRate API (ücretsiz)
+        try:
+            resp = requests.get("https://api.exchangerate-api.com/v4/latest/TRY", timeout=10)
+            data = resp.json()
+            rates = data.get("rates", {})
+            if "USD" in rates and rates["USD"] != 0:
+                prices["USD"] = round(1 / rates["USD"], 2)
+            if "EUR" in rates and rates["EUR"] != 0:
+                prices["EUR"] = round(1 / rates["EUR"], 2)
+            if "GBP" in rates and rates["GBP"] != 0:
+                prices["GBP"] = round(1 / rates["GBP"], 2)
+        except Exception as e:
+            print(f"ExchangeRate hatası: {e}")
+
+        # 3. ALTIN ve BIST - Yahoo Finance
+        try:
+            tickers = yf.download(
+                ["GC=F", "THYAO.IS", "GARAN.IS", "ASELS.IS"],
+                period="1d", interval="1m", progress=False
+            )
+            close = tickers["Close"]
+            # Altın (USD) → TRY çevir
+            usd_try = prices.get("USD", 35.0)
+            if "GC=F" in close.columns:
+                gold_usd = float(close["GC=F"].dropna().iloc[-1])
+                prices["GOLD"] = round(gold_usd * usd_try / 31.1, 2)  # ons → gram
+            for symbol in ["THYAO.IS", "GARAN.IS", "ASELS.IS"]:
+                short = symbol.replace(".IS", "")
+                if symbol in close.columns:
+                    prices[short] = round(float(close[symbol].dropna().iloc[-1]), 2)
+        except Exception as e:
+            print(f"Yahoo Finance hatası: {e}")
+
+        return prices
+
     def list(self, request):
-        """Varlıkları listele ve fiyatları rastgele güncelle (simülasyon)"""
+        """Varlıkları listele ve fiyatları gerçek API'den güncelle"""
+        real_prices = self.get_real_prices()
         assets = Asset.objects.all()
+
         for asset in assets:
-            change_percent = random.uniform(-1.5, 2.0) / 100
-            new_price = float(asset.current_price) * (1 + change_percent)
-            asset.current_price = Decimal(str(round(max(new_price, 0.01), 2)))
-            asset.save()
+            symbol = asset.symbol.upper()
+            if symbol in real_prices and real_prices[symbol] > 0:
+                asset.current_price = Decimal(str(real_prices[symbol]))
+                asset.save()
+            else:
+                # Gerçek fiyat alınamazsa küçük simülasyon yap
+                change_percent = random.uniform(-0.5, 0.5) / 100
+                new_price = float(asset.current_price) * (1 + change_percent)
+                asset.current_price = Decimal(str(round(max(new_price, 0.01), 2)))
+                asset.save()
 
         serializer = self.get_serializer(assets, many=True)
         return Response(serializer.data)
