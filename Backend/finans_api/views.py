@@ -1,5 +1,6 @@
 # Backend/finans_api/views.py
-
+from dotenv import load_dotenv
+load_dotenv()
 from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny
 from .serializers import RegisterSerializer, UserSerializer
@@ -18,14 +19,13 @@ try:
 except ImportError:
     pytesseract = None
 import re
-
-
-# BU İKİ IMPORT SATIRININ KESİNLİKLE OLMASI GEREKİYOR:
 from .models import Category, Transaction, Portfolio, Asset, Investment, Holding
 from .serializers import (CategorySerializer, TransactionSerializer, 
                          PortfolioSerializer, AssetSerializer, InvestmentSerializer, HoldingSerializer)
 
 from rest_framework import generics, permissions
+import os
+import anthropic
 
 # ... (ViewSet tanımları aşağıda devam etmeli)
 
@@ -292,38 +292,102 @@ class HoldingViewSet(viewsets.ReadOnlyModelViewSet):
         return Holding.objects.filter(user=self.request.user, quantity__gt=0)
     
 
+def post(self, request, *args, **kwargs):
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    file_obj = request.data['image']
+
+    img = Image.open(file_obj)
+    text = pytesseract.image_to_string(img)
+    print("\n=== OCR METİN ===")
+    print(text)
+    print("=================\n")
+
+    total_amount = 0.0
+
+    # Önce TOPLAM satırını ara
+    lines = text.split('\n')
+    for line in lines:
+        if 'TOPLAM' in line.upper() or 'TOTAL' in line.upper():
+            # Boşlukları temizle, sayıyı bul
+            clean_line = line.replace(' ', '')
+            prices = re.findall(r'\d+[.,]\d{2}', clean_line)
+            if prices:
+                raw = prices[-1].replace(',', '.')
+                try:
+                    total_amount = float(raw)
+                except:
+                    pass
+                break
+
+    # TOPLAM bulunamazsa tüm fiyatlardan en büyüğünü al
+    if total_amount == 0.0:
+        clean_text = text.replace(' ', '')
+        prices = re.findall(r'\d+[.,]\d{2}', clean_text)
+        amounts = []
+        for p in prices:
+            try:
+                amounts.append(float(p.replace(',', '.')))
+            except:
+                pass
+        if amounts:
+            total_amount = max(amounts)
+
+    return Response({
+        'success': True,
+        'raw_text': text,
+        'detected_total': total_amount
+    })
+
 class OCRScanView(APIView):
     permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
+        import anthropic
+        import base64
+
         file_obj = request.data['image']
-        
-        # 1. Görüntüyü Aç
-        img = Image.open(file_obj)
-        
-        # 2. Tesseract ile Metne Çevir (Türkçe desteği yoksa eng kullanır)
-        text = pytesseract.image_to_string(img)
-        print("\n=== OCR'IN FİŞTEN OKUDUĞU METİN ===")
-        print(text)
-        print("===================================\n")
-        
-        # 3. Basit Zeka: Toplam Tutarı Bulmaya Çalış (Regex)
-        # Genelde "Toplam" kelimesinin yanındaki sayıyı ararız
-        total_amount = 0.0
-        
-        # Basit bir fiyat bulma regex'i (Örn: 120,50 veya 120.50)
-        prices = re.findall(r'\d+\s*[.,]\s*\d{2}', text)
-        print("BULUNAN FİYATLAR LİSTESİ:", prices)
-        if prices:
-            # En son sayıyı al
-            raw_price = prices[-1]
-            # Önce aradaki boşlukları sil, sonra virgülü noktaya çevir
-            clean_price = raw_price.replace(' ', '').replace(',', '.')
-            total_amount = float(clean_price)
+        img_bytes = file_obj.read()
+        img_base64 = base64.standard_b64encode(img_bytes).decode('utf-8')
+
+        content_type = file_obj.content_type or 'image/jpeg'
+
+        client = anthropic.Anthropic(api_key="ANTHROPIC_API_KEY")
+
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=500,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": content_type,
+                                "data": img_base64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": "Bu bir Türk fişi veya faturasıdır. Sadece TOPLAM tutarını bul ve sadece sayıyı yaz, başka hiçbir şey yazma. Örnek: 3299.50"
+                        }
+                    ],
+                }
+            ],
+        )
+
+        raw_text = message.content[0].text.strip()
+
+        try:
+            clean = raw_text.replace(',', '.').replace(' ', '')
+            total_amount = float(clean)
+        except:
+            total_amount = 0.0
 
         return Response({
             'success': True,
-            'raw_text': text,         # Okunan tüm metin
-            'detected_total': total_amount # Tahmin edilen tutar
+            'raw_text': raw_text,
+            'detected_total': total_amount
         })
