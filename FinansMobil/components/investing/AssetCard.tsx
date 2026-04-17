@@ -2,67 +2,43 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Asset } from '@/types';
 
-interface Props {
-  asset: Asset;
-}
+const typeColors: Record<string, string> = {
+  CRYPTO: '#F59E0B',
+  STOCK: '#1565C0',
+  FOREX: '#7C3AED',
+};
 
-const typeIcons: Record<string, string> = {
+const typeLabels: Record<string, string> = {
   CRYPTO: 'C',
   STOCK: 'S',
   FOREX: 'F',
 };
 
-const typeColors: Record<string, string> = {
-  CRYPTO: '#f59e0b',
-  STOCK: '#3b82f6',
-  FOREX: '#8b5cf6',
-};
+interface Props { asset: Asset; }
 
 export default function AssetCard({ asset }: Props) {
   const price = Number(asset.current_price);
-  const formatMoney = (val: number) =>
-    val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (val: number) => val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const bgColor =
-    asset.priceChange === 'up'
-      ? '#dcfce7'
-      : asset.priceChange === 'down'
-      ? '#fef3c7'
-      : '#fff';
+  const bgColor = asset.priceChange === 'up' ? '#E8F5E9' : asset.priceChange === 'down' ? '#FFF8E1' : '#fff';
+  const borderColor = asset.priceChange === 'up' ? '#A5D6A7' : asset.priceChange === 'down' ? '#FFE082' : '#BBDEFB';
 
   return (
-    <View style={[styles.card, { backgroundColor: bgColor }]}>
-      <View style={styles.row}>
-        <View
-          style={[
-            styles.typeBadge,
-            { backgroundColor: typeColors[asset.asset_type] || '#999' },
-          ]}
-        >
-          <Text style={styles.typeBadgeText}>
-            {typeIcons[asset.asset_type] || '?'}
+    <View style={[styles.card, { backgroundColor: bgColor, borderColor }]}>
+      <View style={[styles.badge, { backgroundColor: typeColors[asset.asset_type] || '#999' }]}>
+        <Text style={styles.badgeText}>{typeLabels[asset.asset_type] || '?'}</Text>
+      </View>
+      <View style={styles.info}>
+        <Text style={styles.symbol}>{asset.symbol}</Text>
+        <Text style={styles.name} numberOfLines={1}>{asset.name}</Text>
+      </View>
+      <View style={styles.priceCol}>
+        <Text style={styles.price}>{fmt(price)} TL</Text>
+        {asset.priceChange && (
+          <Text style={[styles.change, { color: asset.priceChange === 'up' ? '#43A047' : '#E53935' }]}>
+            {asset.priceChange === 'up' ? '▲ +' : '▼ -'}
           </Text>
-        </View>
-        <View style={styles.info}>
-          <Text style={styles.symbol}>{asset.symbol}</Text>
-          <Text style={styles.name} numberOfLines={1}>
-            {asset.name}
-          </Text>
-        </View>
-        <View style={styles.priceCol}>
-          <Text style={styles.price}>{formatMoney(price)} TL</Text>
-          {asset.priceChange && (
-            <Text
-              style={{
-                fontSize: 11,
-                color: asset.priceChange === 'up' ? '#10b981' : '#ef4444',
-                fontWeight: '600',
-              }}
-            >
-              {asset.priceChange === 'up' ? '  +' : '  -'}
-            </Text>
-          )}
-        </View>
+        )}
       </View>
     </View>
   );
@@ -70,50 +46,21 @@ export default function AssetCard({ asset }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 12, padding: 12, marginBottom: 8,
+    borderWidth: 0.5,
+    shadowColor: '#0A2472', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  badge: {
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
-  typeBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  typeBadgeText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  info: {
-    flex: 1,
-  },
-  symbol: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  name: {
-    fontSize: 12,
-    color: '#888',
-  },
-  priceCol: {
-    alignItems: 'flex-end',
-  },
-  price: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+  badgeText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  info: { flex: 1 },
+  symbol: { fontSize: 15, fontWeight: '700', color: '#0A2472' },
+  name: { fontSize: 12, color: '#90CAF9', marginTop: 2 },
+  priceCol: { alignItems: 'flex-end' },
+  price: { fontSize: 14, fontWeight: '700', color: '#0A2472' },
+  change: { fontSize: 11, fontWeight: '600', marginTop: 2 },
 });

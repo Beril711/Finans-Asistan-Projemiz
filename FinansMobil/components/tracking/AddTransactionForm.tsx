@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
+  StyleSheet, Text, View, TextInput,
+  TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { getCategories, addTransaction } from '@/services/trackingService';
 import CategoryModal from './CategoryModal';
 import type { Category } from '@/types';
 
-interface Props {
-  onTransactionAdded: () => void;
-}
+const COLORS = {
+  navyDark: '#0A2472', navyMid: '#1565C0', blue: '#1E88E5',
+  cyan: '#29B6F6', cyanLight: '#90CAF9', bgLight: '#F0F4FF', cardBorder: '#BBDEFB',
+  expense: '#1565C0', income: '#29B6F6',
+};
+
+interface Props { onTransactionAdded: () => void; }
 
 export default function AddTransactionForm({ onTransactionAdded }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -31,16 +29,11 @@ export default function AddTransactionForm({ onTransactionAdded }: Props) {
   const fetchCategories = async () => {
     try {
       const res = await getCategories();
-      const data = Array.isArray(res.data) ? res.data : [];
-      setCategories(data);
-    } catch {
-      setCategories([]);
-    }
+      setCategories(Array.isArray(res.data) ? res.data : []);
+    } catch { setCategories([]); }
   };
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
+  useEffect(() => { fetchCategories(); }, []);
 
   const filteredCategories = categories.filter((c) => c.type === transactionType);
 
@@ -51,236 +44,102 @@ export default function AddTransactionForm({ onTransactionAdded }: Props) {
   }, [transactionType, categories]);
 
   const handleSubmit = async () => {
-    if (!categoryId) {
-      Alert.alert('Hata', 'Lutfen bir kategori secin.');
-      return;
-    }
+    if (!categoryId) { Alert.alert('Hata', 'Lutfen bir kategori secin.'); return; }
     const amountNum = parseFloat(amount);
-    if (!amount || isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Hata', 'Gecerli bir miktar girin.');
-      return;
-    }
-    if (!date) {
-      Alert.alert('Hata', 'Tarih giriniz.');
-      return;
-    }
-
+    if (!amount || isNaN(amountNum) || amountNum <= 0) { Alert.alert('Hata', 'Gecerli bir miktar girin.'); return; }
+    if (!date) { Alert.alert('Hata', 'Tarih giriniz.'); return; }
     setLoading(true);
     try {
-      await addTransaction({
-        category: categoryId,
-        transaction_type: transactionType,
-        amount: amountNum,
-        date,
-        description: description.trim() || undefined,
-      });
-      setAmount('');
-      setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
+      await addTransaction({ category: categoryId, transaction_type: transactionType, amount: amountNum, date, description: description.trim() || undefined });
+      setAmount(''); setDescription(''); setDate(new Date().toISOString().split('T')[0]);
       onTransactionAdded();
     } catch (error: any) {
       const data = error.response?.data;
-      const msg = data
-        ? typeof data === 'string'
-          ? data
-          : Object.values(data).flat().join(' ')
-        : 'Islem eklenemedi.';
+      const msg = data ? (typeof data === 'string' ? data : Object.values(data).flat().join(' ')) : 'Islem eklenemedi.';
       Alert.alert('Hata', msg);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Yeni Islem Ekle</Text>
 
-      {/* Transaction Type */}
       <View style={styles.typeRow}>
         <TouchableOpacity
-          style={[styles.typeButton, transactionType === 'EXPENSE' && styles.expenseActive]}
+          style={[styles.typeBtn, transactionType === 'EXPENSE' && { backgroundColor: COLORS.expense, borderColor: COLORS.expense }]}
           onPress={() => setTransactionType('EXPENSE')}
         >
-          <Text style={[styles.typeText, transactionType === 'EXPENSE' && styles.typeTextActive]}>
-            Gider
-          </Text>
+          <Text style={[styles.typeTxt, transactionType === 'EXPENSE' && styles.typeTxtActive]}>💸  Gider</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.typeButton, transactionType === 'INCOME' && styles.incomeActive]}
+          style={[styles.typeBtn, transactionType === 'INCOME' && { backgroundColor: COLORS.income, borderColor: COLORS.income }]}
           onPress={() => setTransactionType('INCOME')}
         >
-          <Text style={[styles.typeText, transactionType === 'INCOME' && styles.typeTextActive]}>
-            Gelir
-          </Text>
+          <Text style={[styles.typeTxt, transactionType === 'INCOME' && styles.typeTxtActive]}>💰  Gelir</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Category Picker */}
       <Text style={styles.label}>Kategori</Text>
       <View style={styles.pickerWrapper}>
-        <Picker
-          selectedValue={categoryId}
-          onValueChange={(val) => setCategoryId(val)}
-          style={styles.picker}
-        >
+        <Picker selectedValue={categoryId} onValueChange={(val) => setCategoryId(val)} style={styles.picker}>
           {filteredCategories.map((cat) => (
             <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
           ))}
         </Picker>
       </View>
-
-      <TouchableOpacity
-        style={styles.addCategoryButton}
-        onPress={() => setShowCategoryModal(true)}
-      >
-        <Text style={styles.addCategoryText}>+ Yeni Kategori</Text>
+      <TouchableOpacity style={styles.addCategoryBtn} onPress={() => setShowCategoryModal(true)}>
+        <Text style={styles.addCategoryTxt}>+ Yeni Kategori</Text>
       </TouchableOpacity>
 
-      {/* Amount */}
       <Text style={styles.label}>Miktar (TL)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="0.00"
-        placeholderTextColor="#999"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="decimal-pad"
-      />
+      <TextInput style={styles.input} placeholder="0.00" placeholderTextColor={COLORS.cyanLight} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
 
-      {/* Date */}
       <Text style={styles.label}>Tarih</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="YYYY-MM-DD"
-        placeholderTextColor="#999"
-        value={date}
-        onChangeText={setDate}
-      />
+      <TextInput style={styles.input} placeholder="YYYY-MM-DD" placeholderTextColor={COLORS.cyanLight} value={date} onChangeText={setDate} />
 
-      {/* Description */}
       <Text style={styles.label}>Aciklama (Opsiyonel)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Islem aciklamasi"
-        placeholderTextColor="#999"
-        value={description}
-        onChangeText={setDescription}
-      />
+      <TextInput style={styles.input} placeholder="Islem aciklamasi" placeholderTextColor={COLORS.cyanLight} value={description} onChangeText={setDescription} />
 
-      {/* Submit */}
-      <TouchableOpacity
-        style={[styles.submitButton, loading && { opacity: 0.7 }]}
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>Islem Ekle</Text>
-        )}
+      <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitTxt}>Islem Ekle</Text>}
       </TouchableOpacity>
 
-      <CategoryModal
-        visible={showCategoryModal}
-        onClose={() => setShowCategoryModal(false)}
-        onCategoryAdded={fetchCategories}
-      />
+      <CategoryModal visible={showCategoryModal} onClose={() => setShowCategoryModal(false)} onCategoryAdded={fetchCategories} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 0.5, borderColor: COLORS.cardBorder,
+    shadowColor: COLORS.navyDark, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 14,
+  title: { fontSize: 16, fontWeight: '700', color: COLORS.navyDark, marginBottom: 16 },
+  typeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  typeBtn: {
+    flex: 1, padding: 13, borderRadius: 12,
+    borderWidth: 1.5, borderColor: COLORS.cardBorder,
+    alignItems: 'center', backgroundColor: COLORS.bgLight,
   },
-  typeRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  typeButton: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    alignItems: 'center',
-  },
-  expenseActive: {
-    backgroundColor: '#ef4444',
-    borderColor: '#ef4444',
-  },
-  incomeActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  typeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
-  },
-  typeTextActive: {
-    color: '#fff',
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
-    marginBottom: 4,
-  },
+  typeTxt: { fontSize: 14, fontWeight: '700', color: COLORS.navyMid },
+  typeTxtActive: { color: '#fff' },
+  label: { fontSize: 12, fontWeight: '600', color: COLORS.navyMid, marginBottom: 6 },
   pickerWrapper: {
-    backgroundColor: '#f7f7f7',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    marginBottom: 6,
-    overflow: 'hidden',
+    backgroundColor: COLORS.bgLight, borderWidth: 1,
+    borderColor: COLORS.cardBorder, borderRadius: 10, marginBottom: 6, overflow: 'hidden',
   },
-  picker: {
-    height: 50,
-  },
-  addCategoryButton: {
-    marginBottom: 14,
-  },
-  addCategoryText: {
-    color: '#667eea',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  picker: { height: 50, color: COLORS.navyDark },
+  addCategoryBtn: { marginBottom: 14 },
+  addCategoryTxt: { color: COLORS.blue, fontSize: 13, fontWeight: '600' },
   input: {
-    backgroundColor: '#f7f7f7',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    color: '#333',
-    marginBottom: 12,
+    backgroundColor: COLORS.bgLight, borderWidth: 1, borderColor: COLORS.cardBorder,
+    borderRadius: 10, padding: 13, fontSize: 15, color: COLORS.navyDark, marginBottom: 12,
   },
-  submitButton: {
-    backgroundColor: '#667eea',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 4,
+  submitBtn: {
+    backgroundColor: COLORS.navyMid, padding: 15,
+    borderRadius: 12, alignItems: 'center', marginTop: 4,
   },
-  submitText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
+  submitTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

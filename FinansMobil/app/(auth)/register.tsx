@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  StyleSheet, Text, View, TextInput, TouchableOpacity,
+  ActivityIndicator, SafeAreaView, KeyboardAvoidingView,
+  Platform, ScrollView, StatusBar, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+
+const COLORS = {
+  navyDark: '#0A2472', navyMid: '#1565C0', blue: '#1E88E5',
+  cyan: '#29B6F6', cyanLight: '#90CAF9', bgLight: '#F0F4FF', cardBorder: '#BBDEFB',
+};
+
+const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0;
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -25,71 +25,59 @@ export default function RegisterScreen() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleRegister = async () => {
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    if (!username.trim() || !password || !password2) {
-      setErrorMsg('Tum alanlar gereklidir.');
-      return;
-    }
-
-    if (password !== password2) {
-      setErrorMsg('Sifreler eslesmiyor.');
-      return;
-    }
-
+    setErrorMsg(null); setSuccessMsg(null);
+    if (!username.trim() || !password || !password2) { setErrorMsg('Tum alanlar gereklidir.'); return; }
+    if (password !== password2) { setErrorMsg('Sifreler eslesmiyor.'); return; }
     setLoading(true);
     try {
       await register({ username: username.trim(), password, password2 });
       setSuccessMsg('Kayit basarili! Giris yapabilirsiniz.');
-      setTimeout(() => {
-        router.replace('/(auth)/login');
-      }, 1500);
+      setTimeout(() => router.replace('/(auth)/login'), 1500);
     } catch (error: any) {
       const data = error.response?.data;
-      if (data) {
-        const messages = Object.values(data).flat().join(' ');
-        setErrorMsg(messages || 'Kayit basarisiz oldu.');
-      } else {
-        setErrorMsg('Kayit basarisiz oldu. Tekrar deneyin.');
-      }
-    } finally {
-      setLoading(false);
-    }
+      setErrorMsg(data ? (Object.values(data).flat().join(' ') || 'Kayit basarisiz oldu.') : 'Kayit basarisiz oldu. Tekrar deneyin.');
+    } finally { setLoading(false); }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.navyDark} translucent={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+
+          {/* Logo + Başlık */}
           <View style={styles.headerSection}>
-            <Text style={styles.logo}>Finans Asistani</Text>
-            <Text style={styles.subtitle}>Yeni hesap olusturun</Text>
+            <View style={styles.logoWrapper}>
+              <Image
+                source={require('@/assets/images/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.appName}>Finans Asistanım</Text>
+            <Text style={styles.subtitle}>Yeni hesap oluşturun</Text>
           </View>
 
+          {/* Form Kartı */}
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Kayit Ol</Text>
+            <Text style={styles.formTitle}>Kayıt Ol</Text>
 
             {errorMsg && (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{errorMsg}</Text>
               </View>
             )}
-
             {successMsg && (
               <View style={styles.successBox}>
                 <Text style={styles.successText}>{successMsg}</Text>
               </View>
             )}
 
-            <Text style={styles.label}>Kullanici Adi</Text>
+            <Text style={styles.label}>Kullanıcı Adı</Text>
             <TextInput
               style={styles.input}
-              placeholder="Kullanici adinizi girin"
-              placeholderTextColor="#999"
+              placeholder="Kullanıcı adınızı girin"
+              placeholderTextColor={COLORS.cyanLight}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -97,22 +85,22 @@ export default function RegisterScreen() {
               editable={!loading}
             />
 
-            <Text style={styles.label}>Sifre</Text>
+            <Text style={styles.label}>Şifre</Text>
             <TextInput
               style={styles.input}
-              placeholder="Sifrenizi girin"
-              placeholderTextColor="#999"
+              placeholder="Şifrenizi girin"
+              placeholderTextColor={COLORS.cyanLight}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               editable={!loading}
             />
 
-            <Text style={styles.label}>Sifre Tekrar</Text>
+            <Text style={styles.label}>Şifre Tekrar</Text>
             <TextInput
               style={styles.input}
-              placeholder="Sifrenizi tekrar girin"
-              placeholderTextColor="#999"
+              placeholder="Şifrenizi tekrar girin"
+              placeholderTextColor={COLORS.cyanLight}
               value={password2}
               onChangeText={setPassword2}
               secureTextEntry
@@ -120,26 +108,20 @@ export default function RegisterScreen() {
             />
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, loading && { opacity: 0.7 }]}
               onPress={handleRegister}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Kayit Ol</Text>
-              )}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Kayıt Ol</Text>}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => router.replace('/(auth)/login')}
-            >
+            <TouchableOpacity style={styles.linkButton} onPress={() => router.replace('/(auth)/login')}>
               <Text style={styles.linkText}>
-                Zaten hesabiniz var mi? <Text style={styles.linkBold}>Giris Yap</Text>
+                Zaten hesabınız var mı? <Text style={styles.linkBold}>Giriş Yap</Text>
               </Text>
             </TouchableOpacity>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -147,112 +129,55 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#667eea',
+  container: { flex: 1, backgroundColor: COLORS.navyDark },
+  flex: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingTop: STATUS_BAR_HEIGHT + 20 },
+
+  headerSection: { alignItems: 'center', marginBottom: 36 },
+  logoWrapper: {
+    width: 100, height: 100, borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 18,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)',
   },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  headerSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logo: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-  },
+  logoImage: { width: 80, height: 80, borderRadius: 20 },
+  appName: { fontSize: 30, fontWeight: '800', color: '#fff', marginBottom: 8, letterSpacing: 0.5 },
+  subtitle: { fontSize: 15, color: COLORS.cyanLight },
+
   formCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: '#fff', borderRadius: 24, padding: 26,
+    shadowColor: COLORS.navyDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2, shadowRadius: 16, elevation: 10,
   },
-  formTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
+  formTitle: { fontSize: 22, fontWeight: '700', color: COLORS.navyDark, textAlign: 'center', marginBottom: 20 },
+
   errorBox: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: '#EFF6FF', borderRadius: 10, padding: 12,
+    marginBottom: 16, borderWidth: 1, borderColor: COLORS.cardBorder,
   },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  errorText: { color: COLORS.navyMid, fontSize: 13, textAlign: 'center' },
+
   successBox: {
-    backgroundColor: '#dcfce7',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: '#E3F2FD', borderRadius: 10, padding: 12,
+    marginBottom: 16, borderWidth: 1, borderColor: COLORS.cyan,
   },
-  successText: {
-    color: '#16a34a',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
-    marginBottom: 6,
-  },
+  successText: { color: COLORS.navyMid, fontSize: 13, textAlign: 'center', fontWeight: '600' },
+
+  label: { fontSize: 13, fontWeight: '600', color: COLORS.navyMid, marginBottom: 6 },
   input: {
-    backgroundColor: '#f7f7f7',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 16,
+    backgroundColor: COLORS.bgLight, borderWidth: 1, borderColor: COLORS.cardBorder,
+    borderRadius: 12, padding: 14, fontSize: 15, color: COLORS.navyDark, marginBottom: 14,
   },
+
   button: {
-    backgroundColor: '#667eea',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 4,
+    backgroundColor: COLORS.navyMid, padding: 16,
+    borderRadius: 12, alignItems: 'center', marginTop: 6,
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  linkBold: {
-    color: '#667eea',
-    fontWeight: 'bold',
-  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  linkButton: { marginTop: 20, alignItems: 'center' },
+  linkText: { fontSize: 14, color: '#888' },
+  linkBold: { color: COLORS.navyMid, fontWeight: '700' },
 });
